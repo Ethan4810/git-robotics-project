@@ -10,9 +10,9 @@
 
    Things to Do
    - adjust button sensitivity (debounce time)
-   - adjust distance difference
+   - adjust distance difference (human or object)
+   - add win distance feature
 */
-
 
 // button pins and variables
 #include <ezButton.h>
@@ -101,7 +101,6 @@ int lost_durations[] = {
 };
 int lost_theme_len = sizeof(lost_melodies) / sizeof(int);
 
-
 void setup() {
   Serial.begin(9600);
 
@@ -116,7 +115,7 @@ void setup() {
   digitalWrite(redPin, LOW);
 
   // button setup
-  button.setDebounceTime(1000);
+  button.setDebounceTime(50);
 
   // servo setup
   servo.attach(servoPin, 500, 2500);
@@ -130,82 +129,74 @@ void setup() {
   Serial.println("***********************");
   Serial.println("Playing main music ...");
   playTheme(main_melodies, main_durations, main_theme_len);
-
   delay(2000);
 }
 
-
 void loop()
 {
-  // game counts
-  for (int game_cnt = 0; game_cnt < 10; game_cnt++)
+  // loop through game counts
+  for (int game_cnt = 0; game_cnt < 5 ; game_cnt++)
   {
+    if (isButtonPressed())
+    {
+      // button pressed (game won)
+      digitalWrite(greenPin, HIGH);
+      digitalWrite(redPin, LOW);
+      playTheme(win_melodies, win_durations, win_theme_len);
+      delay(1000);
+      exit(0);
+    }
+
     // print game count
     Serial.println("***********************");
     Serial.print("\t");
     Serial.print("Game ");
     Serial.println(game_cnt + 1);
 
-    // button not pressed (game continues)
-    if (!isButtonPressed())
+    // green light
+    servo.write(posToWall);
+    digitalWrite(greenPin, HIGH);
+    digitalWrite(redPin, LOW);
+    Serial.println("-----------------------");
+    Serial.println("Green Light ...");
+    playTheme(game_melodies, game_durations, game_theme_len);
+
+    // red light
+    Serial.println("Red   Light !");
+    servo.write(posToPlayer);
+    digitalWrite(greenPin, LOW);
+    digitalWrite(redPin, HIGH);
+    delay(1000);
+
+    // read stop distance
+    Serial.println("-----------------------");
+    Serial.print("Stop ");
+    stop_distance = readDistance(300);
+    Serial.println("-----------------------");
+
+    // read move distances (takes (read_cnt x read_time) seconds)
+    for (int read_cnt = 0; read_cnt < 25; read_cnt ++)
     {
-      // green light
-      servo.write(posToWall);
-      digitalWrite(greenPin, HIGH);
-      digitalWrite(redPin, LOW);
-      Serial.println("-----------------------");
-      Serial.println("Green Light ...");
-      playTheme(game_melodies, game_durations, game_theme_len);
+      Serial.print("Move ");
+      move_distance = readDistance(80);
 
-      // red light
-      Serial.println("Red   Light !");
-      servo.write(posToPlayer);
-      digitalWrite(greenPin, LOW);
-      digitalWrite(redPin, HIGH);
-      delay(1000);
-
-      // read stop distance
-      // TODO: fix (first distance = 0 cm error)
-      Serial.println("-----------------------");
-      Serial.print("Stop ");
-      stop_distance = readDistance(300);
-      Serial.println("-----------------------");
-
-      // read move distances (takes (read_cnt x read_time) seconds)
-      for (int read_cnt = 0; read_cnt < 25; read_cnt ++)
+      // player move (game over)
+      if (isPlayerMove())
       {
-        Serial.print("Move ");
-        move_distance = readDistance(80);
+        Serial.println("***********************");
+        playAlarm();
+        delay(1000);
+        playTheme(lost_melodies, lost_durations, lost_theme_len);
+        exit(0);
+      }
 
-        // player move (game over)
-        if (isPlayerMove())
-        {
-          Serial.println("***********************");
-          playAlarm();
-          delay(1000);
-          playTheme(lost_melodies, lost_durations, lost_theme_len);
-          exit(0);
-        }
-
-        // player stay still (game continues)
-        else
-        {
-          continue;
-        }
+      // player stay still (game continues)
+      else
+      {
+        continue;
       }
     }
-    
-    // button pressed (game won)
-    else if (isButtonPressed())
-    {
-      Serial.println("-----------------------");
-      digitalWrite(greenPin, HIGH);
-      digitalWrite(redPin, LOW);
-      playTheme(win_melodies, win_durations, win_theme_len);
-      exit(0);
-    }
   }
-  
   // game count over (game over)
   Serial.println("-----------------------");
   Serial.println("Out of count. You lost!");
@@ -225,6 +216,25 @@ void playTheme(int melodies[], int durations[], int theme_length)
     delay(pause_time);
     noTone(musicPin);
   }
+}
+
+bool isButtonPressed()
+{
+  button.loop();
+
+  // button pressed
+  if (button.isPressed())
+  {
+    Serial.println("-----------------------");
+    Serial.println("Button is pressed!");
+    Serial.println("***********************");
+    return true;
+  }
+
+  // button not pressed
+  Serial.println("-----------------------");
+  Serial.println("Button is not pressed.");
+  return false;
 }
 
 int readDistance(int read_time)
@@ -260,32 +270,11 @@ bool isPlayerMove()
     return true;
   }
 
-  // player stay still (game continue)
+  // player stay still (game continues)
   else
   {
     return false;
   }
-}
-
-bool isButtonPressed()
-{
-  button.loop();
-  if (button.isPressed())
-  {
-    Serial.println("***********************");
-    Serial.println("Button is pressed!");
-    Serial.println("***********************");
-    digitalWrite(greenPin, HIGH);
-    digitalWrite(redPin, LOW);
-    playTheme(win_melodies, win_durations, win_theme_len);
-    exit(0);
-
-
-    return true;
-  }
-  Serial.println("***********************");
-  Serial.println("Button is not pressed!");
-  return false;
 }
 
 void playAlarm()
