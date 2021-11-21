@@ -277,6 +277,7 @@ bool isPlayerMove()
   }
 }
 
+<<<<<<< HEAD
 void playAlarm()
 {
   tone(alarmPin, 600, 3000);
@@ -566,6 +567,8 @@ bool isPlayerMove()
   }
 }
 
+=======
+>>>>>>> 0376496c87cf1db31ee69202ac9ada2a05418d6c
 void playAlarm()
 {
   tone(alarmPin, 600, 3000);
