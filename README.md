@@ -1,3 +1,14 @@
 # git-robotics-project
 
-아두이노 키트 만들기를 생활화 하자 ㅇㅋ? 제발좀
+Green Light Red Light Game
+
+1 Arduino Uno
+1 Breadboard
+2 Piezo Passive Buzzers
+1 Red LED
+1 Green LED
+1 HC-SR04 Sensor
+1 Servo
+3 AAA Batteries
+1 Battery Holder
+Cables
