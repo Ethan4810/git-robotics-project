@@ -125,8 +125,7 @@ void setup() {
   // passive buzzer setup
   pinMode(musicPin, OUTPUT);
   pinMode(alarmPin, OUTPUT);
-  digitalWrite(musicPin, LOW);
-  digitalWrite(alarmPin, LOW);
+  allLightOff();
   Serial.println("***********************");
   Serial.println("Playing main music ...");
   playTheme(main_melodies, main_durations, main_theme_len);
@@ -138,11 +137,10 @@ void loop()
   // loop through game counts
   for (int game_cnt = 0; game_cnt < 5 ; game_cnt++)
   {
+    // button pressed (game won)
     if (isButtonPressed())
     {
-      // button pressed (game won)
-      digitalWrite(greenPin, HIGH);
-      digitalWrite(redPin, LOW);
+      allLightOff();
       playTheme(win_melodies, win_durations, win_theme_len);
       delay(1000);
       exit(0);
@@ -156,8 +154,7 @@ void loop()
 
     // green light
     servo.write(posToWall);
-    digitalWrite(greenPin, HIGH);
-    digitalWrite(redPin, LOW);
+    greenLightOn();
     Serial.println("-----------------------");
     Serial.println("Green Light ...");
     playTheme(game_melodies, game_durations, game_theme_len);
@@ -165,8 +162,7 @@ void loop()
     // red light
     Serial.println("Red   Light !");
     servo.write(posToPlayer);
-    digitalWrite(greenPin, LOW);
-    digitalWrite(redPin, HIGH);
+    redLightOn();
     delay(1000);
 
     // read stop distance
@@ -187,6 +183,7 @@ void loop()
         Serial.println("***********************");
         playAlarm();
         delay(1000);
+        allLightOff();
         playTheme(lost_melodies, lost_durations, lost_theme_len);
         exit(0);
       }
@@ -288,4 +285,22 @@ void playAlarm()
   delay(500);
   noTone(alarmPin);
   delay(500);
+}
+
+void greenLightOn()
+{
+  digitalWrite(greenPin, HIGH);
+  digitalWrite(redPin, LOW);
+}
+
+void redLightOn()
+{
+  digitalWrite(greenPin, LOW);
+  digitalWrite(redPin, HIGH);
+}
+
+void allLightOff()
+{
+  digitalWrite(greenPin, LOW);
+  digitalWrite(redPin, LOW);
 }
