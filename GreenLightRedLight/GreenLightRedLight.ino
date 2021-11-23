@@ -9,9 +9,9 @@
    5. Gane Won/Lost
 
    Things to Do
-   - adjust button sensitivity (debounce time)
-   - adjust distance difference (human or object)
-   - add win distance feature
+   - adjust min diff and max diff (movement detection)
+   - adjust win distance (win condition)
+   - change game lost theme
 */
 
 // passive buzzer pins
@@ -24,24 +24,24 @@ const int greenPin = 4;
 const int redPin = 5;
 
 // hc-sr04 sensor pins and variables
-// optimal range: 2 cm ~ 400 cm
 const int trigPin = 6;
 const int echoPin = 7;
 long read_duration;
-int distance;
+int distance; // cm
 int stop_distance;
 int move_distance;
-const int win_distance = 15;
-int diff;
-const int min_diff = 7;
-const int max_diff = 10;
+const int win_distance = 25;        // adjust
+int diff; // cm
+const int min_diff = 7;             // adjust
+const int max_diff = 10;            // adjust
 
 // servo pin and variables
 #include <Servo.h>
 Servo servo;
 const int servoPin = 8;
-int posToWall = 0;
-int posToPlayer = 180;
+const int posToWall = 0;
+const int posToPlayer = 180;
+const int max_game_cnt = 5;         // adjust
 
 // main theme (squid game)
 int main_melodies[] = {
@@ -106,12 +106,6 @@ void setup() {
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
 
-  // led setup
-  pinMode(greenPin, OUTPUT);
-  pinMode(redPin, OUTPUT);
-  digitalWrite(greenPin, LOW);
-  digitalWrite(redPin, LOW);
-
   // servo setup
   servo.attach(servoPin, 500, 2500);
   servo.write(posToWall);
@@ -119,7 +113,13 @@ void setup() {
   // passive buzzer setup
   pinMode(musicPin, OUTPUT);
   pinMode(alarmPin, OUTPUT);
+
+  // led setup
+  pinMode(greenPin, OUTPUT);
+  pinMode(redPin, OUTPUT);
   allLightsOff();
+
+  // play main theme
   Serial.println("***********************");
   Serial.println("Playing main music ...");
   playTheme(main_melodies, main_durations, main_theme_len);
@@ -129,7 +129,7 @@ void setup() {
 void loop()
 {
   // loop through game counts
-  for (int game_cnt = 0; game_cnt < 100 ; game_cnt++)
+  for (int game_cnt = 0; game_cnt < max_game_cnt ; game_cnt++)
   {
     // print game count
     Serial.println("***********************");
@@ -217,6 +217,11 @@ int readDistance(int read_time)
   // player reach safe area (game won)
   if (distance < win_distance)
   {
+    // game count over (game over)
+    Serial.println("");
+    Serial.println("-----------------------");
+    Serial.println("You win!");
+    Serial.println("***********************");
     allLightsOff();
     playTheme(win_melodies, win_durations, win_theme_len);
     exit(0);
