@@ -31,7 +31,10 @@ long read_duration;
 int distance;
 int stop_distance;
 int move_distance;
+const int win_distance = 15;
 int diff;
+const int min_diff = 7;
+const int max_diff = 10;
 
 // servo pin and variables
 #include <Servo.h>
@@ -39,12 +42,6 @@ Servo servo;
 const int servoPin = 8;
 int posToWall = 0;
 int posToPlayer = 180;
-
-// button pins and variables
-#include <ezButton.h>
-const int buttonPin = 9;
-ezButton button(buttonPin);
-int btnState;
 
 // main theme (squid game)
 int main_melodies[] = {
@@ -115,9 +112,6 @@ void setup() {
   digitalWrite(greenPin, LOW);
   digitalWrite(redPin, LOW);
 
-  // button setup
-  button.setDebounceTime(50);
-
   // servo setup
   servo.attach(servoPin, 500, 2500);
   servo.write(posToWall);
@@ -125,7 +119,7 @@ void setup() {
   // passive buzzer setup
   pinMode(musicPin, OUTPUT);
   pinMode(alarmPin, OUTPUT);
-  allLightOff();
+  allLightsOff();
   Serial.println("***********************");
   Serial.println("Playing main music ...");
   playTheme(main_melodies, main_durations, main_theme_len);
@@ -135,17 +129,8 @@ void setup() {
 void loop()
 {
   // loop through game counts
-  for (int game_cnt = 0; game_cnt < 5 ; game_cnt++)
+  for (int game_cnt = 0; game_cnt < 100 ; game_cnt++)
   {
-    // button pressed (game won)
-    if (isButtonPressed())
-    {
-      allLightOff();
-      playTheme(win_melodies, win_durations, win_theme_len);
-      delay(1000);
-      exit(0);
-    }
-
     // print game count
     Serial.println("***********************");
     Serial.print("\t");
@@ -183,7 +168,7 @@ void loop()
         Serial.println("***********************");
         playAlarm();
         delay(1000);
-        allLightOff();
+        allLightsOff();
         playTheme(lost_melodies, lost_durations, lost_theme_len);
         exit(0);
       }
@@ -195,6 +180,7 @@ void loop()
       }
     }
   }
+
   // game count over (game over)
   Serial.println("-----------------------");
   Serial.println("Out of count. You lost!");
@@ -216,25 +202,6 @@ void playTheme(int melodies[], int durations[], int theme_length)
   }
 }
 
-bool isButtonPressed()
-{
-  button.loop();
-
-  // button pressed
-  if (button.isPressed())
-  {
-    Serial.println("-----------------------");
-    Serial.println("Button is pressed!");
-    Serial.println("***********************");
-    return true;
-  }
-
-  // button not pressed
-  Serial.println("-----------------------");
-  Serial.println("Button is not pressed.");
-  return false;
-}
-
 int readDistance(int read_time)
 {
   // send ping from trigger pin
@@ -246,6 +213,14 @@ int readDistance(int read_time)
   // read ping from echo pin
   read_duration = pulseIn(echoPin, HIGH);
   distance = (read_duration * 0.0343) / 2.;
+
+  // player reach safe area (game won)
+  if (distance < win_distance)
+  {
+    allLightsOff();
+    playTheme(win_melodies, win_durations, win_theme_len);
+    exit(0);
+  }
 
   // show distance and button state
   Serial.print("Distance = ");
@@ -261,7 +236,7 @@ bool isPlayerMove()
   diff = abs(stop_distance - move_distance);
 
   // player move (game lost)
-  if (7 < diff && diff < 10) // noise removal
+  if (min_diff < diff && diff < max_diff) // noise removal
   {
     Serial.println("-----------------------");
     Serial.println("Player 324 eliminated !");
@@ -299,7 +274,7 @@ void redLightOn()
   digitalWrite(redPin, HIGH);
 }
 
-void allLightOff()
+void allLightsOff()
 {
   digitalWrite(greenPin, LOW);
   digitalWrite(redPin, LOW);
