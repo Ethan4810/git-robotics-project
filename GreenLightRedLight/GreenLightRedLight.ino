@@ -2,46 +2,54 @@
    Green Light Red Light Game
 
    Game Progress
-   1. Game Start button
-   2. Main music plays
-   3. Game music plays
-   4. Distance detection
-   5. Gane Won/Lost
+   1. Game starts with main theme playing.
+   2. Green light with game theme playing.
+   3. Red light and initiate movement detection.
+   4. Gane Won  (Reaches safe area)
+   5. Game Lost (Out of counts or movement detected)
+   6. Game reset with arduino reset button.
 
    Things to Do
    - adjust min diff and max diff (movement detection)
    - adjust win distance (win condition)
    - change game lost theme
+   - implement lcd?
 */
 
-// passive buzzer pins
+// adjustable variables
+const int max_game_cnt = 5;         // adjust
+const float music_speed = 1.05;     // adjust
+const int min_diff = 8;             // adjust
+const int max_diff = 12;            // adjust
+const int win_distance = 20;        // adjust
+const int stop_read_time = 100;     // adjust
+const int move_read_time = 80;      // adjust
+const int max_read_cnt = 25;        // adjust
+
+// passive buzzer pins and variables
 #include "pitches.h"
-const int musicPin = 2;
-const int alarmPin = 3;
+const int musicPin = 2;             // pin
+const int alarmPin = 3;             // pin
 
 // led pins
-const int greenPin = 4;
-const int redPin = 5;
+const int greenPin = 4;             // pin
+const int redPin = 5;               // pin
 
 // hc-sr04 sensor pins and variables
-const int trigPin = 6;
-const int echoPin = 7;
+const int trigPin = 6;              // pin
+const int echoPin = 7;              // pin
 long read_duration;
 int distance; // cm
 int stop_distance;
 int move_distance;
-const int win_distance = 25;        // adjust
 int diff; // cm
-const int min_diff = 7;             // adjust
-const int max_diff = 10;            // adjust
 
 // servo pin and variables
 #include <Servo.h>
 Servo servo;
-const int servoPin = 8;
+const int servoPin = 8;             // pin
 const int posToWall = 0;
 const int posToPlayer = 180;
-const int max_game_cnt = 5;         // adjust
 
 // main theme (squid game)
 int main_melodies[] = {
@@ -50,24 +58,24 @@ int main_melodies[] = {
   NOTE_B4, NOTE_B4, NOTE_B4, NOTE_B4, NOTE_B4, NOTE_B4,
   NOTE_B4, NOTE_A4, NOTE_G4, NOTE_A4, NOTE_G4, NOTE_E4, NOTE_E4
 };
-int main_durations[] = {
+int main_theme_durations[] = {
   4, 4, 2, 4, 4, 2,
   4, 4, 4, 4, 4, 4, 2,
   4, 4, 2, 4, 4, 2,
   4, 4, 4, 4, 4, 4, 2
 };
-int main_theme_len = sizeof(main_melodies) / sizeof(int);
+int main_theme_length = sizeof(main_melodies) / sizeof(int);
 
 // game theme (green light red light)
 int game_melodies[] = {
   NOTE_E4, NOTE_A4, NOTE_A4, NOTE_A4, NOTE_G4,
   NOTE_A4, NOTE_A4, NOTE_E4, NOTE_E4, NOTE_G4
 };
-int game_durations[] = {
+int game_theme_durations[] = {
   4, 4, 2, 2, 2,
   4, 4, 4, 4, 2
 };
-int game_theme_len = sizeof(game_melodies) / sizeof(int);
+int game_theme_length = sizeof(game_melodies) / sizeof(int);
 
 // win theme (mario victory)
 int win_melodies[] = {
@@ -78,7 +86,7 @@ int win_melodies[] = {
   NOTE_AS3, NOTE_D4, NOTE_F4, NOTE_AS4, NOTE_D5, NOTE_F5,
   NOTE_AS5, NOTE_AS5, NOTE_AS5, NOTE_AS5, NOTE_C6
 };
-int win_durations[] = {
+int win_theme_durations[] = {
   6, 6, 6, 6, 6, 6,
   2, 2,
   6, 6, 6, 6, 6, 6,
@@ -86,18 +94,18 @@ int win_durations[] = {
   6, 6, 6, 6, 6, 6,
   2, 6, 6, 6, 1
 };
-int win_theme_len = sizeof(win_melodies) / sizeof(int);
+int win_theme_length = sizeof(win_melodies) / sizeof(int);
 
 // lost theme
 int lost_melodies[] = {
   NOTE_C5, NOTE_B4, NOTE_A4, NOTE_B4, NOTE_A4, NOTE_G4,
   NOTE_A4, NOTE_G4, NOTE_F4, NOTE_C4
 };
-int lost_durations[] = {
+int lost_theme_durations[] = {
   6, 6, 6, 6, 6, 6,
   6, 6, 6, 2
 };
-int lost_theme_len = sizeof(lost_melodies) / sizeof(int);
+int lost_theme_length = sizeof(lost_melodies) / sizeof(int);
 
 void setup() {
   Serial.begin(9600);
@@ -108,7 +116,7 @@ void setup() {
 
   // servo setup
   servo.attach(servoPin, 500, 2500);
-  servo.write(posToWall);
+  servo.write(posToPlayer);
 
   // passive buzzer setup
   pinMode(musicPin, OUTPUT);
@@ -122,7 +130,7 @@ void setup() {
   // play main theme
   Serial.println("***********************");
   Serial.println("Playing main music ...");
-  playTheme(main_melodies, main_durations, main_theme_len);
+  playMusic(main_melodies, main_theme_durations, main_theme_length);
   delay(2000);
 }
 
@@ -141,8 +149,8 @@ void loop()
     servo.write(posToWall);
     greenLightOn();
     Serial.println("-----------------------");
-    Serial.println("Green Light ...");
-    playTheme(game_melodies, game_durations, game_theme_len);
+    Serial.println("Green Light ~");
+    playMusic(game_melodies, game_theme_durations, game_theme_length);
 
     // red light
     Serial.println("Red   Light !");
@@ -153,23 +161,25 @@ void loop()
     // read stop distance
     Serial.println("-----------------------");
     Serial.print("Stop ");
-    stop_distance = readDistance(300);
+    stop_distance = readDistance(stop_read_time);
     Serial.println("-----------------------");
 
-    // read move distances (takes (read_cnt x read_time) seconds)
-    for (int read_cnt = 0; read_cnt < 25; read_cnt ++)
+    // read move distances (takes (max_read_cnt x move_read_time) seconds)
+    for (int read_cnt = 0; read_cnt < max_read_cnt; read_cnt ++)
     {
       Serial.print("Move ");
-      move_distance = readDistance(80);
+      move_distance = readDistance(move_read_time);
 
       // player move (game over)
       if (isPlayerMove())
       {
+        Serial.println("-----------------------");
+        Serial.println("Player 324 eliminated!");
         Serial.println("***********************");
         playAlarm();
         delay(1000);
         allLightsOff();
-        playTheme(lost_melodies, lost_durations, lost_theme_len);
+        playMusic(lost_melodies, lost_theme_durations, lost_theme_length);
         exit(0);
       }
 
@@ -183,23 +193,12 @@ void loop()
 
   // game count over (game over)
   Serial.println("-----------------------");
-  Serial.println("Out of count. You lost!");
+  Serial.println("Out of game counts.");
+  Serial.println("-----------------------");
+  Serial.println("Player 324 eliminated!");
   Serial.println("***********************");
-  playTheme(lost_melodies, lost_durations, lost_theme_len);
+  playMusic(lost_melodies, lost_theme_durations, lost_theme_length);
   exit(0);
-}
-
-void playTheme(int melodies[], int durations[], int theme_length)
-{
-  for (int i = 0; i < theme_length; i++)
-  {
-    int duration = 1000 / durations[i];
-    int pause_time = duration * 1.13;
-
-    tone(musicPin, melodies[i], duration);
-    delay(pause_time);
-    noTone(musicPin);
-  }
 }
 
 int readDistance(int read_time)
@@ -220,10 +219,12 @@ int readDistance(int read_time)
     // game count over (game over)
     Serial.println("");
     Serial.println("-----------------------");
-    Serial.println("You win!");
+    Serial.println("You are in safe area.");
+    Serial.println("-----------------------");
+    Serial.println("Player 324 won!");
     Serial.println("***********************");
     allLightsOff();
-    playTheme(win_melodies, win_durations, win_theme_len);
+    playMusic(win_melodies, win_theme_durations, win_theme_length);
     exit(0);
   }
 
@@ -244,7 +245,7 @@ bool isPlayerMove()
   if (min_diff < diff && diff < max_diff) // noise removal
   {
     Serial.println("-----------------------");
-    Serial.println("Player 324 eliminated !");
+    Serial.println("Movement detected.");
     return true;
   }
 
@@ -252,6 +253,19 @@ bool isPlayerMove()
   else
   {
     return false;
+  }
+}
+
+void playMusic(int melodies[], int music_durations[], int music_length)
+{
+  for (int i = 0; i < music_length; i++)
+  {
+    int music_duration = 1000 / music_durations[i];
+    int pause_time = music_duration * music_speed;
+
+    tone(musicPin, melodies[i], music_duration);
+    delay(pause_time);
+    noTone(musicPin);
   }
 }
 
