@@ -11,20 +11,18 @@
 
    Things to Do
    - adjust min diff and max diff (movement detection)
-   - adjust win distance (win condition)
    - change game lost theme
-   - implement lcd?
 */
 
 // adjustable variables
+const float music_speed = 1.1;      // adjust
 const int max_game_cnt = 5;         // adjust
-const float music_speed = 1.05;     // adjust
-const int min_diff = 8;             // adjust
-const int max_diff = 12;            // adjust
-const int win_distance = 20;        // adjust
+const int min_diff = 9;             // adjust
+const int max_diff = 11;            // adjust
+const int win_distance = 35;        // adjust
 const int stop_read_time = 100;     // adjust
-const int move_read_time = 80;      // adjust
-const int max_read_cnt = 25;        // adjust
+const int move_read_time = 66;      // adjust
+const int max_read_cnt = 30;        // adjust
 
 // passive buzzer pins and variables
 #include "pitches.h"
@@ -125,7 +123,7 @@ void setup() {
   // led setup
   pinMode(greenPin, OUTPUT);
   pinMode(redPin, OUTPUT);
-  allLightsOff();
+  allLightsOn();
 
   // play main theme
   Serial.println("***********************");
@@ -176,9 +174,10 @@ void loop()
         Serial.println("-----------------------");
         Serial.println("Player 324 eliminated!");
         Serial.println("***********************");
+        allLightsOff();
+        redLightOn();
         playAlarm();
         delay(1000);
-        allLightsOff();
         playMusic(lost_melodies, lost_theme_durations, lost_theme_length);
         exit(0);
       }
@@ -197,6 +196,8 @@ void loop()
   Serial.println("-----------------------");
   Serial.println("Player 324 eliminated!");
   Serial.println("***********************");
+  allLightsOff();
+  redLightOn();
   playMusic(lost_melodies, lost_theme_durations, lost_theme_length);
   exit(0);
 }
@@ -214,7 +215,7 @@ int readDistance(int read_time)
   distance = (read_duration * 0.0343) / 2.;
 
   // player reach safe area (game won)
-  if (distance < win_distance)
+  if (distance <= win_distance)
   {
     // game count over (game over)
     Serial.println("");
@@ -224,6 +225,7 @@ int readDistance(int read_time)
     Serial.println("Player 324 won!");
     Serial.println("***********************");
     allLightsOff();
+    greenLightOn();
     playMusic(win_melodies, win_theme_durations, win_theme_length);
     exit(0);
   }
@@ -242,7 +244,7 @@ bool isPlayerMove()
   diff = abs(stop_distance - move_distance);
 
   // player move (game lost)
-  if (min_diff < diff && diff < max_diff) // noise removal
+  if (min_diff <= diff && diff <= max_diff) // noise removal
   {
     Serial.println("-----------------------");
     Serial.println("Movement detected.");
@@ -290,6 +292,12 @@ void greenLightOn()
 void redLightOn()
 {
   digitalWrite(greenPin, LOW);
+  digitalWrite(redPin, HIGH);
+}
+
+void allLightsOn()
+{
+  digitalWrite(greenPin, HIGH);
   digitalWrite(redPin, HIGH);
 }
 
