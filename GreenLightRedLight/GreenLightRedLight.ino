@@ -17,8 +17,8 @@
 // adjustable variables
 const float music_speed = 1.1;      // adjust
 const int max_game_cnt = 5;         // adjust
-const int min_diff = 9;             // adjust
-const int max_diff = 11;            // adjust
+const int min_diff = 10;            // adjust
+const int max_diff = 15;            // adjust
 const int win_distance = 35;        // adjust
 const int stop_read_time = 100;     // adjust
 const int move_read_time = 66;      // adjust
